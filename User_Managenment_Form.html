@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management</title>
+    <script src="//unpkg.com/alpinejs" defer></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-8">
+    <div x-data="userManagement()" class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">User Management</h1>
+
+        <!-- User Form -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Add User</h2>
+            <form @submit.prevent="saveUser">
+                <!-- Form fields will go here -->
+                
+                <!-- Email input field -->
+                <div class="mb-4">
+                    <label for="email" class="block mb-2">Email</label>
+                    <input type="email" id="email" x-model="email" @input="validateEmail" x-ref="emailInput" required class="w-full p-2 border rounded">
+                    <p x-show="emailError" x-text="emailError" class="text-red-500 mt-1"></p>
+                </div>
+
+                <!-- Gender Dropdown -->
+                <div class="mb-4">
+                    <label for="gender" class="block mb-2">Gender</label>
+                    <select id="gender" x-model="gender" class="w-full p-2 border rounded">
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Pincode input field -->
+                <div class="mb-4">
+                    <label for="pincode" class="block mb-2">Pincode</label>
+                    <input type="text" id="pincode" x-model="pincode" @input="validatePincode" class="w-full p-2 border rounded">
+                    <p x-show="pincodeError" x-text="pincodeError" class="text-red-500 mt-1"></p>
+                </div>
+
+                <!-- Birthday input field -->
+                <div class="mb-4">
+                    <label for="birthday" class="block mb-2">Birthday (dd/mm/yyyy)</label>
+                    <input type="text" id="birthday" x-model="birthday" @input="validateBirthday" class="w-full p-2 border rounded">
+                    <p x-show="birthdayError" x-text="birthdayError" class="text-red-500 mt-1"></p>
+                </div>
+
+                <!-- Country input field with auto-suggest -->
+                <div class="mb-4 relative">
+                    <label for="country" class="block mb-2">Country</label>
+                    <input type="text" id="country" x-model="country" @input="updateCountrySuggestions" class="w-full p-2 border rounded">
+                    <div x-show="countrySuggestions.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <template x-for="suggestion in countrySuggestions" :key="suggestion">
+                            <div @click="selectCountry(suggestion)" x-text="suggestion" class="p-2 hover:bg-gray-100 cursor-pointer"></div>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Submit Button to submit the data of user and clear the form -->
+                <div class="mt-6">
+                    <button 
+                    type="submit" 
+                    x-bind:disabled="!isFormValid" 
+                    x-bind:class="{
+                        'p-6 text-white px-4 py-2 rounded': true,
+                        'cursor-not-allowed bg-gray-300': !isFormValid,
+                        'cursor-pointer bg-green-400': isFormValid
+                    }">
+                    Save
+                </button>
+
+                <!-- Clear button to direct clear the form -->
+                <button type="reset" class="p-6 bg-gradient-to-bl from-red-400 to-pink-300 text-white px-4 py-2 rounded">
+                    clear
+                </button>
+                </div>
+
+                <!-- User Listing -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold mb-4">User Listing</h2>                
+                    <!-- Extra Filters for searching purposes -->
+                        <div class="mb-4 flex space-x-4">
+                            <input type="text" x-model="filters.email" placeholder="Filter by Email" class="p-2 border rounded cursor-not-allowed">
+                            <select x-model="filters.gender" class="p-2 border rounded">
+                                <option value="">All Genders</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <input type="text" x-model="filters.pincode" placeholder="Filter by Pincode" class="p-2 border rounded">
+                            <input type="text" x-model="filters.birthday" placeholder="Filter by Birthday" class="p-2 border rounded">
+                            <input type="text" x-model="filters.country" placeholder="Filter by Country" class="p-2 border rounded">
+                            <button @click="clearFilters" class="bg-gray-300 px-4 py-2 rounded">Clear Filters</button>
+                        </div>
+                    
+                        <!-- User Table -->
+                        <table class="w-full" x-show="filteredUsers.length > 0">
+                            <thead>
+                                <tr>
+                                    <th class="text-left p-2">Email</th>
+                                    <th class="text-left p-2">Gender</th>
+                                    <th class="text-left p-2">Pincode</th>
+                                    <th class="text-left p-2">Birthday</th>
+                                    <th class="text-left p-2">Country</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="user in filteredUsers" :key="user.email">
+                                    <tr>
+                                        <td x-text="user.email" class="p-2"></td>
+                                        <td x-text="user.gender" class="p-2"></td>
+                                        <td x-text="user.pincode" class="p-2"></td>
+                                        <td x-text="user.birthday" class="p-2"></td>
+                                        <td x-text="user.country" class="p-2"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    
+                        <!-- No Data Message -->
+                        <p x-show="filteredUsers.length === 0" class="text-center text-gray-500 mt-4">
+                            No user data available.
+                        </p>
+                </div>
+                </div>
+            </form>
+        </div>
+
+        
+
+    <script>
+        function userManagement() {
+            return {
+        // Form data
+        email: '',
+        gender: '',
+        pincode: '',
+        birthday: '',
+        country: '',
+
+        // Error messages
+        emailError: '',
+        pincodeError: '',
+        birthdayError: '',
+
+        // Country suggestions
+        countrySuggestions: [],
+
+        // User data
+        users: [],
+
+        // Filters
+        filters: {
+            email: '',
+            gender: '',
+            pincode: '',
+            birthday: '',
+            country: ''
+        },
+
+        // Validation methods
+
+        // Email validation using browser validation method 
+        validateEmail() {
+            if (this.$refs.emailInput.validity.valid) {
+                this.emailError = '';
+            } else if (this.$refs.emailInput.validity.valueMissing) {
+                this.emailError = 'Email is required';
+            } else if (this.$refs.emailInput.validity.typeMismatch) {
+                this.emailError = 'Please enter a valid email address';
+            } else {
+                this.emailError = 'Invalid email format, please check';
+            }
+        },
+
+        // Pincode validation using Regex for 6 digits only
+        validatePincode() {
+            const pincodeRegex = /^\d{6}$/;
+            this.pincodeError = pincodeRegex.test(this.pincode) ? '' : 'Pincode must be exactly 6 digits, please try again';
+        },
+
+        // Birthday validation for correct format
+        validateBirthday() {
+            const birthdayRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[012])\/(19|20)\d\d$/;
+            this.birthdayError = birthdayRegex.test(this.birthday) ? '' : 'Invalid date format (dd/mm/yyyy)';
+        },
+
+        // Country validation using API call to auto-suggest the countries matches with letter typed
+        updateCountrySuggestions() {
+            if (this.country.length === 0) {
+                this.countrySuggestions = [];
+                return;
+            }
+
+            fetch('https://restcountries.com/v3.1/all')
+                .then(response => response.json())
+                .then(data => {
+                const countries = data.map(country => country.name.common);
+                this.countrySuggestions = countries.filter(c => 
+                    c.toLowerCase().startsWith(this.country.toLowerCase())).slice(0, 20);
+                })
+                .catch(error => {
+                console.error('Error fetching countries:', error);
+                this.countrySuggestions = [];
+                });
+            },
+
+        selectCountry(country) {
+            this.country = country;
+            this.countrySuggestions = [];
+        },
+
+        // Form validation
+        get isFormValid() {
+            return this.email && !this.emailError &&
+                   this.gender &&
+                   this.pincode && !this.pincodeError &&
+                   this.birthday && !this.birthdayError &&
+                   this.country;
+        },
+        // Save user
+        saveUser() {
+            if (this.isFormValid) {
+                this.users.push({
+                    email: this.email,
+                    gender: this.gender,
+                    pincode: this.pincode,
+                    birthday: this.birthday,
+                    country: this.country
+                });
+
+                // Clear form
+                this.email = '';
+                this.gender = '';
+                this.pincode = '';
+                this.birthday = '';
+                this.country = '';
+
+                alert('User data saved successfully!');
+            }
+        },
+
+
+        // Filter users
+        get filteredUsers() {
+            return this.users.filter(user => 
+                user.email.toLowerCase().includes(this.filters.email.toLowerCase()) &&
+                (this.filters.gender === '' || user.gender === this.filters.gender) &&
+                user.pincode.includes(this.filters.pincode) &&
+                user.birthday.includes(this.filters.birthday) &&
+                user.country.toLowerCase().includes(this.filters.country.toLowerCase())
+            );
+        },
+
+        // Clear filters
+        clearFilters() {
+            this.filters = {
+                email: '',
+                gender: '',
+                pincode: '',
+                birthday: '',
+                country: ''
+            };
+        }
+    };
+}
+    </script>
+</body>
+</html>
